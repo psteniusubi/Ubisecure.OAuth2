@@ -91,7 +91,11 @@ function StartLoopbackRedirectionRequest {
         }
         if($local:response) {
             $local:response | % { $_.QueryString.Get("code") } | ? { $_ } | % {
-                [pscredential]::new("code", (ConvertTo-SecureString -AsPlainText -Force -String $_)).GetNetworkCredential()
+                [PSCustomObject]@{
+                    "PSTypeName" = "OAuth2.Code"
+                    "Credential" = [pscredential]::new("code", (ConvertTo-SecureString -AsPlainText -Force -String $_)).GetNetworkCredential()
+                    "RedirectUri" = $local:redirect_uri
+                }                
             }
         }
     }

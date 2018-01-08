@@ -375,7 +375,7 @@ function Get-AccessToken {
         $Credential,
 
         [parameter(Mandatory=$true,ParameterSetName="Code")] 
-        [System.Net.NetworkCredential] 
+        [PSTypeName("OAuth2.Code")] 
         $Code,
 
         [parameter(Mandatory=$true,ParameterSetName="RefreshToken")] 
@@ -427,8 +427,8 @@ function Get-AccessToken {
             "Code" {
                 $local:tokenrequest = $local:tokenrequest | 
                     Add-QueryString "grant_type" "authorization_code" |
-                    Add-QueryString "redirect_uri" $Client.RedirectUri |
-                    Add-QueryString "code" $Code.Password |
+                    Add-QueryString "redirect_uri" $Code.RedirectUri |
+                    Add-QueryString "code" $Code.Credential.Password |
                     ConvertTo-QueryString
             }
             "RefreshToken" {
@@ -450,6 +450,9 @@ function Get-AccessToken {
         if($local:tokenresponse) {
             Write-Debug ($local:tokenresponse | ConvertTo-Json -Depth 8)
         }
+        if($ResponseOut) {
+            $ResponseOut.Value = $local:tokenresponse
+        }
         if($local:tokenresponse -and $local:tokenresponse.access_token) {
             if($RefreshTokenOut) {
                 if($local:tokenresponse.refresh_token) {
@@ -458,9 +461,6 @@ function Get-AccessToken {
                 } else {
                     $RefreshTokenOut.Value = $null
                 }
-            }
-            if($ResponseOut) {
-                $ResponseOut.Value = $local:tokenresponse
             }
             [pscredential]::new("Bearer", (ConvertTo-SecureString -AsPlainText -Force -String $local:tokenresponse.access_token)).GetNetworkCredential()
         }
