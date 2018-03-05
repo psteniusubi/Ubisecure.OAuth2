@@ -36,6 +36,7 @@ function StartEmbeddedBrowserRequest {
         Write-Verbose "StartEmbeddedBrowserRequest GET $local:authorizationRequest"
         $local:response = (New-BrowserRequest -ErrorAction Stop).AuthorizationRequest($local:authorizationRequest.Uri)
         if($local:response) {
+            Write-Verbose "StartEmbeddedBrowserRequest $($local:response)"
             $local:response.Query | ConvertFrom-QueryString | Select-QueryString "code" | ? { $_ } | % {
                 [PSCustomObject]@{
                     "PSTypeName" = "OAuth2.Code"
