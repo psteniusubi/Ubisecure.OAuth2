@@ -2,7 +2,7 @@ function New-BrowserRequest {
     [CmdletBinding()]
     param()
     begin {
-        Add-Type -Path "$PSScriptRoot\Helper.cs" -ReferencedAssemblies "System.Web","System.Drawing","System.Windows.Forms","System.Management.Automation" -ErrorAction Stop
+        Add-Type -Path "$PSScriptRoot\Helper.cs" -ReferencedAssemblies "System.Web","PresentationCore","PresentationFramework","WindowsBase","System.Xaml" -ErrorAction Stop
     }
     process {
         [Helper.EmbeddedBrowserRequest]::new()
