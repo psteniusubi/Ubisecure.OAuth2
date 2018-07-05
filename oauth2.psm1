@@ -487,6 +487,10 @@ function Get-UserInfo {
         $local:headers = @{"Accept"="application/json"}
         $local:headers += $Bearer | ConvertTo-HttpBearer | ConvertTo-HttpAuthorization
         $local:uri = $local:metadata.userinfo_endpoint
+        if(-not $local:uri) {
+            Write-Error "userinfo_endpoint is not defined"
+            return
+        }
         Write-Verbose "Get-UserInfo GET $local:uri"
         Invoke-RestMethod -Method Get -Uri $local:uri -Headers $local:headers -UseBasicParsing
     }
@@ -512,6 +516,10 @@ function Get-TokenInfo {
         $local:headers = @{"Accept"="application/json"}
         $local:headers += $Client.Credential | ConvertTo-HttpBasic | ConvertTo-HttpAuthorization
         $local:uri = $local:metadata.introspection_endpoint
+        if(-not $local:uri) {
+            Write-Error "introspection_endpoint is not defined"
+            return
+        }
         $local:request = New-QueryString | Add-QueryString "token" $Bearer.Password | ConvertTo-QueryString
         Write-Verbose "Get-TokenInfo POST $local:uri $local:request"
         Invoke-RestMethod -Method Post -Uri $local:uri -Headers $local:headers -Body $local:request -ContentType "application/x-www-form-urlencoded" -UseBasicParsing
