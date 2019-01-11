@@ -197,6 +197,7 @@ function Add-Metadata {
     [CmdletBinding()]
     param(
         [parameter(Mandatory=$true,Position=0)] 
+        [Alias("issuer")]
         [Uri] 
         $Authority,
 
@@ -205,14 +206,17 @@ function Add-Metadata {
         $Value,
 
         [parameter(Mandatory=$true,ParameterSetName="Endpoint")] 
+        [Alias("token_endpoint")]
         [uri] 
         $TokenEndpoint,
 
         [parameter(Mandatory=$false,ParameterSetName="Endpoint")] 
+        [Alias("authorization_endpoint")]
         [uri] 
         $AuthorizationEndpoint,
 
         [parameter(Mandatory=$false,ParameterSetName="Endpoint")] 
+        [Alias("userinfo_endpoint")]
         [uri] 
         $UserInfoEndpoint
     )
@@ -223,6 +227,7 @@ function Add-Metadata {
             }
             "Endpoint" {
                 Add-Metadata -Authority $Authority -Value ([PSCustomObject] @{
+                    "issuer" = $Authority
                     "token_endpoint" = $TokenEndpoint
                     "authorization_endpoint" = $AuthorizationEndpoint
                     "userinfo_endpoint" = $UserInfoEndpoint
