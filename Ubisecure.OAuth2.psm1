@@ -1,5 +1,4 @@
-﻿Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath "querystring/querystring.psd1") -Scope Local
-
+﻿
 function Get-ModulePath {
     [CmdletBinding(DefaultParameterSetName="Self")]
     param(
