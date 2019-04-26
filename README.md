@@ -10,14 +10,14 @@ Windows
 
 ```cmd
 cd /d %USERPROFILE%\Documents\WindowsPowerShell\Modules
-git clone --recurse-submodules https://github.com/psteniusubi/Ubisecure.OAuth2.git
+git clone https://github.com/psteniusubi/Ubisecure.OAuth2.git
 ```
 
 Linux
 
 ```bash
 cd ~/.local/share/powershell/Modules
-git clone --recurse-submodules https://github.com/psteniusubi/Ubisecure.OAuth2.git
+git clone https://github.com/psteniusubi/Ubisecure.OAuth2.git
 ```
 
 ## Example
