@@ -4,14 +4,41 @@ Depends on [Ubisecure.QueryString](../../../Ubisecure.QueryString), [Ubisecure.H
 
 Used by [Ubisecure.SSO.Management](../../../Ubisecure.SSO.Management)
 
+## Install from gituhub.com
+
+Windows
+
+```cmd
+cd /d %USERPROFILE%\Documents\WindowsPowerShell\Modules
+git clone --recurse-submodules https://github.com/psteniusubi/Ubisecure.OAuth2.git
+```
+
+Linux
+
+```bash
+cd ~/.local/share/powershell/Modules
+git clone --recurse-submodules https://github.com/psteniusubi/Ubisecure.OAuth2.git
+```
+
 ## Example
 
 ```powershell
-$config = New-OAuthClientConfig -ClientId "public" -ClientSecret (ConvertTo-SecureString -String "public" -AsPlainText -Force) -RedirectUri "http://localhost/public"
+$client = New-OAuthClientConfig -Json @"
+{
+    "redirect_uris":  [
+                          "http://localhost/public"
+                      ],
+    "grant_types":  [
+                        "authorization_code"
+                    ],
+    "client_id":  "public",
+    "client_secret":  "public"
+}
+"@
 
-$code = Get-OAuthAuthorizationCode -Client $config -Authority "https://login.example.ubidemo.com/uas" -Browser "default"
+$code = Get-OAuthAuthorizationCode -Client $client -Authority "https://login.example.ubidemo.com/uas" -Browser "default"
 
-$token = Get-OAuthAccessToken -Client $config -Authority "https://login.example.ubidemo.com/uas" -Code $code
+$token = Get-OAuthAccessToken -Client $client -Authority "https://login.example.ubidemo.com/uas" -Code $code
 
 Get-OAuthUserInfo -Authority "https://login.example.ubidemo.com/uas" -Bearer $token
 ```
