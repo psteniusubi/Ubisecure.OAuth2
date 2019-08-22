@@ -4,7 +4,7 @@ Depends on [Ubisecure.QueryString](../../../Ubisecure.QueryString), [Ubisecure.H
 
 Used by [Ubisecure.SSO.Management](../../../Ubisecure.SSO.Management)
 
-## Install from gituhub.com
+## Install from github.com
 
 Windows
 
