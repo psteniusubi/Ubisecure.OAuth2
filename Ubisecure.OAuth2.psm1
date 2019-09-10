@@ -511,6 +511,10 @@ function Get-TokenInfo {
         [PSTypeName("OAuth2.ClientConfig")] 
         $Client,
 
+        [parameter(Mandatory=$false)] 
+        [switch] 
+        $HttpBasic = $true,
+
         [parameter(Mandatory=$true,Position=2)] 
         [System.Net.NetworkCredential] 
         $Bearer
@@ -518,13 +522,20 @@ function Get-TokenInfo {
     process {
         $local:metadata = Get-Metadata -Authority $Authority -ErrorAction Stop
         $local:headers = @{"Accept"="application/json"}
-        $local:headers += $Client.Credential | ConvertTo-HttpBasic | ConvertTo-HttpAuthorization
+        $local:request = New-QueryString
+        if($HttpBasic) {
+            $local:headers += $Client.Credential | ConvertTo-HttpBasic | ConvertTo-HttpAuthorization
+        } else {
+            $local:request = $local:request | 
+                Add-QueryString "client_id" $Client.Credential.UserName |
+                Add-QueryString "client_secret" $Client.Credential.Password
+        }
         $local:uri = $local:metadata.introspection_endpoint
         if(-not $local:uri) {
             Write-Error "introspection_endpoint is not defined"
             return
         }
-        $local:request = New-QueryString | Add-QueryString "token" $Bearer.Password | ConvertTo-QueryString
+        $local:request = $local:request | Add-QueryString "token" $Bearer.Password | ConvertTo-QueryString
         Write-Verbose "Get-TokenInfo POST $local:uri $local:request"
         Invoke-RestMethod -Method Post -Uri $local:uri -Headers $local:headers -Body $local:request -ContentType "application/x-www-form-urlencoded" -UseBasicParsing
     }
