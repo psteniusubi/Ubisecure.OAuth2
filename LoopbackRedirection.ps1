@@ -60,7 +60,7 @@ function StartLoopbackRedirectionRequest {
         $RandomPort = $true,
 
         [Parameter()]
-        [PSTypeName("QueryString")] 
+        [System.Collections.IDictionary] 
         $QueryString
     )
     begin {

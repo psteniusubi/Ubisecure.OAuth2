@@ -21,7 +21,7 @@ function StartEmbeddedBrowserRequest {
         $Client,
 
         [Parameter()]
-        [PSTypeName("QueryString")] 
+        [System.Collections.IDictionary] 
         $QueryString
     )
     begin {

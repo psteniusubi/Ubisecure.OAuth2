@@ -24,7 +24,7 @@ namespace Helper
         private void Navigating(object sender, NavigatingCancelEventArgs e)
         {
             var form = (sender as WebBrowser).Parent as Window;
-            //Console.WriteLine("Navigating " + e.Url);
+            //Console.WriteLine("Navigating " + e.Uri);
             var b = new UriBuilder(e.Uri);
             b.Query = null;
             if (this.RedirectUri == b.Uri)
@@ -39,7 +39,7 @@ namespace Helper
         private void Navigated(object sender, NavigationEventArgs e)
         {
             var form = (sender as WebBrowser).Parent as Window;
-            //Console.WriteLine("Navigated " + e.Url);
+            //Console.WriteLine("Navigated " + e.Uri);
             var b = new UriBuilder(e.Uri);
             b.Query = null;
             if (this.RedirectUri == b.Uri)
@@ -49,6 +49,10 @@ namespace Helper
                 form.DialogResult = true;
                 form.Close();
             }
+        }
+        private void LoadCompleted(object sender, NavigationEventArgs e) 
+        {
+            //Console.WriteLine("LoadCompleted " + e.Uri);
         }
         private void Run()
         {
@@ -66,6 +70,7 @@ namespace Helper
             //web.Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Bottom);
             web.Navigating += Navigating;
             web.Navigated += Navigated;
+            web.LoadCompleted += LoadCompleted;
             if (postData != null)
             {
                 web.Navigate(requestUri, null, postData, additionalHeaders);
