@@ -85,22 +85,22 @@ function StartLoopbackRedirectionRequest {
         $local:authorizationRequest.Query = (ConvertTo-QueryString $local:query)
         Write-Verbose "StartLoopbackRedirectionRequest GET $local:authorizationRequest"
         Start-Browser -Uri "$($local:listener.Prefix)$id" -Name $Browser -Private:$Private
-        $local:response = $local:listener | Read-HttpRequest | % {
+        $local:code = $null
+        $local:listener | Read-HttpRequest | % {
             Write-Verbose "Read-HttpRequest $($_.Uri)"
             if($_.Url.LocalPath -eq "/$id") {
                 $_ | Write-HttpResponse -Location $local:authorizationRequest.Uri
             } elseif($_.Url.LocalPath -eq $redirect_uri.LocalPath) {
-                $_ | Write-HttpResponse -Body $local:html -Stop -PassThru
+                $local:code = $_.QueryString.Get("code")
+                $_ | Write-HttpResponse -Body $local:html -Stop 
             }
         }
-        if($local:response) {
-            $local:response | % { $_.QueryString.Get("code") } | ? { $_ } | % {
-                [PSCustomObject]@{
-                    "PSTypeName" = "OAuth2.Code"
-                    "Credential" = [pscredential]::new("code", (ConvertTo-SecureString -AsPlainText -Force -String $_)).GetNetworkCredential()
-                    "RedirectUri" = $local:redirect_uri
-                }                
-            }
+        if($local:code) {
+            [PSCustomObject]@{
+                "PSTypeName" = "OAuth2.Code"
+                "Credential" = [pscredential]::new("code", (ConvertTo-SecureString -AsPlainText -Force -String $local:code)).GetNetworkCredential()
+                "RedirectUri" = $local:redirect_uri
+            }                
         }
     }
     end {
