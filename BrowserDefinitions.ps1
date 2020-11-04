@@ -62,6 +62,24 @@ $OAuthBrowserDefinitions = @{
         Write-Verbose "Start-Process $Uri"
         Start-Process -FilePath $Uri
     }
+    "msedge" = { 
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory=$true)]
+            [uri]
+            $Uri,
+            [Parameter()]
+            [switch]
+            $Private
+        )
+        if($Private) {
+            $ArgumentList = @("--incognito",$Uri)
+        } else {
+            $ArgumentList = @($Uri)
+        }
+        Write-Verbose "Start-Process msedge $ArgumentList"
+        Start-Process -FilePath "msedge" -ArgumentList $ArgumentList
+    }
 }
 
 function Start-Browser {

@@ -165,8 +165,16 @@ function Get-Metadata {
 
         [parameter(Mandatory=$false)] 
         [string] 
-        $Path = ".well-known/openid-configuration"
+        $Path = ".well-known/openid-configuration",
+
+        [parameter(Mandatory=$false,DontShow=$true)]
+        [hashtable]
+        $Extensions = [hashtable]::new()
     )
+    begin {
+        $InvokeRestMethod = [hashtable]::new($Extensions)
+        $InvokeRestMethod["UseBasicParsing"] = $true
+    }
     process {
         $Authority | 
         % {
@@ -179,9 +187,10 @@ function Get-Metadata {
                 $local:t.Path += "/"
             }
             $local:t.Path += $Path
-            $local:uri = $local:t.Uri
-            Write-Verbose "Get-Metadata GET $local:uri"
-            $local:metadata = Invoke-RestMethod -Method Get -Uri $local:uri -UseBasicParsing
+            $InvokeRestMethod["Method"] = "Get"
+            $InvokeRestMethod["Uri"] = $local:t.Uri
+            Write-Verbose "Get-Metadata GET $($InvokeRestMethod.Uri)"
+            $local:metadata = Invoke-RestMethod @InvokeRestMethod
             if($local:metadata) {
                 $global:metadatacache[$Authority] = $local:metadata
                 return $local:metadata
@@ -250,17 +259,25 @@ function Get-ScopeFromHttpError {
 
         [parameter(Mandatory=$true,ParameterSetName="Value",ValueFromPipeline=$true)] 
         [string] 
-        $Value
+        $Value,
+
+        [parameter(Mandatory=$false,DontShow=$true)]
+        [hashtable]
+        $Extensions = [hashtable]::new()
     )
     begin {
         Add-Type -AssemblyName "System.Net.Http"
+        $InvokeRestMethod = [hashtable]::new($Extensions)
+        $InvokeRestMethod["UseBasicParsing"] = $true
     }
     process {
         switch ($PsCmdlet.ParameterSetName) {
             "Uri" {
                 Write-Verbose "Get-ScopeFromHttpError GET $Uri"
                 try {
-                    Invoke-RestMethod -Method Get -Uri $Uri -UseBasicParsing
+                    $InvokeRestMethod["Method"] = "Get"
+                    $InvokeRestMethod["Uri"] = $Uri
+                    Invoke-RestMethod @InvokeRestMethod
                 } catch {
                     if(-not $_.Exception.Response) { 
                         Write-Error -Message "no response from $Uri" -Category ConnectionError
@@ -288,8 +305,8 @@ function Get-ScopeFromHttpError {
             "Value" {
                 Write-Debug "Get-ScopeFromHttpError $Value"
                 $Value | 
-                ? { $_ -match "(^|\s)scope=`"([^`"]+)`"($|\s)" } |
-                % { $Matches[2] }
+                ? { $_ -match "\bscope=`"([^`"]+)`"" } |
+                % { $Matches[1] }
             }
         }
     }
@@ -337,10 +354,14 @@ function Get-AuthorizationCode {
 
         [parameter(Mandatory=$false)] 
         [hashtable] 
-        $Parameters
+        $Parameters,
+
+        [parameter(Mandatory=$false,DontShow=$true)]
+        [hashtable]
+        $Extensions = [hashtable]::new()
     )
     begin {
-        $local:metadata = Get-Metadata -Authority $Authority -ErrorAction Stop
+        $local:metadata = Get-Metadata -Authority $Authority -Extensions $Extensions -ErrorAction Stop
     }
     process {
         $local:query = New-QueryString |
@@ -409,10 +430,18 @@ function Get-AccessToken {
 
         [parameter(Mandatory=$false)] 
         [ref] 
-        $ResponseOut
+        $ResponseOut,
+
+        [parameter(Mandatory=$false,DontShow=$true)]
+        [hashtable]
+        $Extensions = [hashtable]::new()
     )
+    begin {
+        $InvokeRestMethod = [hashtable]::new($Extensions)
+        $InvokeRestMethod["UseBasicParsing"] = $true
+        $local:metadata = Get-Metadata -Authority $Authority -Extensions $Extensions -ErrorAction Stop
+    }
     process {
-        $local:metadata = Get-Metadata -Authority $Authority -ErrorAction Stop
         $local:headers = @{"Accept"="application/json"}
         $local:tokenrequest = New-QueryString
         if($HttpBasic) {
@@ -452,9 +481,13 @@ function Get-AccessToken {
                     ConvertTo-QueryString
             }
         }
-        $local:uri = $local:metadata.token_endpoint
-        Write-Verbose "Get-AccessToken POST $local:uri $local:tokenrequest"
-        $local:tokenresponse = Invoke-RestMethod -Method Post -Uri $local:uri -Headers $local:headers -Body $local:tokenrequest -ContentType "application/x-www-form-urlencoded" -UseBasicParsing
+        $InvokeRestMethod["Method"] = "Post"
+        $InvokeRestMethod["Uri"] = $local:metadata.token_endpoint
+        $InvokeRestMethod["Headers"] = $local:headers
+        $InvokeRestMethod["Body"] = $local:tokenrequest
+        $InvokeRestMethod["ContentType"] = "application/x-www-form-urlencoded"
+        Write-Verbose "Get-AccessToken POST $($InvokeRestMethod.Uri) $($InvokeRestMethod.Body)"
+        $local:tokenresponse = Invoke-RestMethod @InvokeRestMethod
         if($local:tokenresponse) {
             Write-Debug ($local:tokenresponse | ConvertTo-Json -Depth 8)
         }
@@ -484,10 +517,18 @@ function Get-UserInfo {
 
         [parameter(Mandatory=$true,Position=1)] 
         [System.Net.NetworkCredential] 
-        $Bearer
+        $Bearer,
+
+        [parameter(Mandatory=$false,DontShow=$true)]
+        [hashtable]
+        $Extensions = [hashtable]::new()
     )
+    begin {
+        $InvokeRestMethod = [hashtable]::new($Extensions)
+        $InvokeRestMethod["UseBasicParsing"] = $true
+        $local:metadata = Get-Metadata -Authority $Authority -Extensions $Extensions -ErrorAction Stop
+    }
     process {
-        $local:metadata = Get-Metadata -Authority $Authority -ErrorAction Stop
         $local:headers = @{"Accept"="application/json"}
         $local:headers += $Bearer | ConvertTo-HttpBearer | ConvertTo-HttpAuthorization
         $local:uri = $local:metadata.userinfo_endpoint
@@ -495,8 +536,11 @@ function Get-UserInfo {
             Write-Error "userinfo_endpoint is not defined"
             return
         }
-        Write-Verbose "Get-UserInfo GET $local:uri"
-        Invoke-RestMethod -Method Get -Uri $local:uri -Headers $local:headers -UseBasicParsing
+        $InvokeRestMethod["Method"] = "Get"
+        $InvokeRestMethod["Uri"] = $local:uri
+        $InvokeRestMethod["Headers"] = $local:headers
+        Write-Verbose "Get-UserInfo GET $($InvokeRestMethod.Uri)"
+        Invoke-RestMethod @InvokeRestMethod
     }
 }
 
@@ -517,10 +561,18 @@ function Get-TokenInfo {
 
         [parameter(Mandatory=$true,Position=2)] 
         [System.Net.NetworkCredential] 
-        $Bearer
+        $Bearer,
+
+        [parameter(Mandatory=$false,DontShow=$true)]
+        [hashtable]
+        $Extensions = [hashtable]::new()
     )
+    begin {
+        $InvokeRestMethod = [hashtable]::new($Extensions)
+        $InvokeRestMethod["UseBasicParsing"] = $true
+        $local:metadata = Get-Metadata -Authority $Authority -Extensions $Extensions -ErrorAction Stop
+    }
     process {
-        $local:metadata = Get-Metadata -Authority $Authority -ErrorAction Stop
         $local:headers = @{"Accept"="application/json"}
         $local:request = New-QueryString
         if($HttpBasic) {
@@ -536,8 +588,13 @@ function Get-TokenInfo {
             return
         }
         $local:request = $local:request | Add-QueryString "token" $Bearer.Password | ConvertTo-QueryString
-        Write-Verbose "Get-TokenInfo POST $local:uri $local:request"
-        Invoke-RestMethod -Method Post -Uri $local:uri -Headers $local:headers -Body $local:request -ContentType "application/x-www-form-urlencoded" -UseBasicParsing
+        $InvokeRestMethod["Method"] = "Post"
+        $InvokeRestMethod["Uri"] = $local:uri
+        $InvokeRestMethod["Headers"] = $local:headers
+        $InvokeRestMethod["Body"] = $local:request
+        $InvokeRestMethod["ContentType"] = "application/x-www-form-urlencoded"
+        Write-Verbose "Get-TokenInfo POST $($InvokeRestMethod.Uri) $($InvokeRestMethod.Body)"
+        Invoke-RestMethod @InvokeRestMethod
     }
 }
 
