@@ -29,14 +29,15 @@ function Get-ClientConfigPath {
         $Root
     )
     begin {
-        $local:r = Join-Path -Path $HOME -ChildPath ".oauth2"
-        Write-Verbose "Get-ClientConfigPath -Root = $local:r"
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        $r = Join-Path -Path $HOME -ChildPath ".oauth2"
+        Write-Verbose "Get-ClientConfigPath -Root = $r"
     }
     process {
         if($Root) {
-            $local:r
+            $r
         } else {
-            $Name | % { Join-Path -Path $local:r -ChildPath $_ }
+            $Name | % { Join-Path -Path $r -ChildPath $_ }
         }
     }
 }
@@ -50,26 +51,26 @@ function SelectRedirectUri {
         $InputObject
     )
     begin {
-        $local:first = $null
-        $local:loopback = $null
+        $first = $null
+        $loopback = $null
     }
     process {
         $InputObject | % {
-            if(-not ($local:first)) {
-                $local:first = $_
+            if(-not ($first)) {
+                $first = $_
             }
             if($_.IsLoopback) {
-                if(-not ($local:loopback)) {
-                    $local:loopback = $_
+                if(-not ($loopback)) {
+                    $loopback = $_
                 }
             }
         }
     }
     end {
-        if($local:loopback) {
-            $local:loopback
-        } elseif($local:first) {
-            $local:first
+        if($loopback) {
+            $loopback
+        } elseif($first) {
+            $first
         }
     }
 }
@@ -98,17 +99,21 @@ function New-ClientConfig {
         [string] 
         $ClientId,
 
-        [parameter(Mandatory=$true,ParameterSetName="ClientId",Position=1)]
+        [parameter(Mandatory=$false,ParameterSetName="ClientId",Position=1)]
+        [AllowNull()]
         [securestring] 
         $ClientSecret,
 
-        [parameter(Mandatory=$true,ParameterSetName="Credential",Position=1)] 
-        [parameter(Mandatory=$true,ParameterSetName="ClientId",Position=2)]
+        [parameter(Mandatory=$false,ParameterSetName="Credential",Position=1)] 
+        [parameter(Mandatory=$false,ParameterSetName="ClientId",Position=2)]
         [AllowNull()] 
         [AllowEmptyString()] 
         [string] 
         $RedirectUri
     )
+    begin {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
     process {
         switch ($PsCmdlet.ParameterSetName) {
             "Name" {
@@ -118,8 +123,8 @@ function New-ClientConfig {
                 $Path | 
                 % {
                     Write-Verbose "Get-Content $_"
-                    $local:t = [string] (Get-Content -Path $_ -ErrorAction Stop | Out-String)
-                    if($local:t) {
+                    $t = [string] (Get-Content -Path $_ -ErrorAction Stop | Out-String)
+                    if($t) {
                         New-ClientConfig -Json $t
                     }
                 }
@@ -129,15 +134,14 @@ function New-ClientConfig {
                 ConvertFrom-Json -InputObject $Json |
                 % {
                     if(-not $_.client_id) { Write-Error -Message "client_id is not defined" -Category InvalidArgument; return }
-                    if(-not $_.client_secret) { Write-Error -Message "client_secret is not defined" -Category InvalidArgument; return }
-                    $local:t = New-ClientConfig -ClientId $_.client_id `
-                        -ClientSecret (ConvertTo-SecureString -AsPlainText -Force -String $_.client_secret) `
+                    $t = New-ClientConfig -Credential ([System.Net.NetworkCredential]::new($_.client_id, $_.client_secret)) `
                         -RedirectUri ($_.redirect_uris | SelectRedirectUri)
-                    $local:t | Add-Member -MemberType NoteProperty -Name "Json" -Value $_ -PassThru
+                    $t | Add-Member -MemberType NoteProperty -Name "Json" -Value $_ -PassThru
                 }
             }
             "ClientId" {
-                New-ClientConfig -Credential ([pscredential]::new($ClientId, $ClientSecret).GetNetworkCredential()) -RedirectUri $RedirectUri
+                New-ClientConfig -Credential ([System.Net.NetworkCredential]::new($ClientId, $ClientSecret)) `
+                    -RedirectUri $RedirectUri
             }
             "Credential" {
                 [PSCustomObject]@{
@@ -172,6 +176,7 @@ function Get-Metadata {
         $Extensions = [hashtable]::new()
     )
     begin {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         $InvokeRestMethod = [hashtable]::new($Extensions)
         $InvokeRestMethod["UseBasicParsing"] = $true
     }
@@ -182,18 +187,18 @@ function Get-Metadata {
                 Write-Verbose "Get-Metadata CACHE $Authority"
                 return $global:metadatacache[$Authority]
             }
-            $local:t = [uribuilder]::new($Authority)
-            if(-not $local:t.Path.EndsWith("/")) {
-                $local:t.Path += "/"
+            $t = [uribuilder]::new($Authority)
+            if(-not $t.Path.EndsWith("/")) {
+                $t.Path += "/"
             }
-            $local:t.Path += $Path
+            $t.Path += $Path
             $InvokeRestMethod["Method"] = "Get"
-            $InvokeRestMethod["Uri"] = $local:t.Uri
+            $InvokeRestMethod["Uri"] = $t.Uri
             Write-Verbose "Get-Metadata GET $($InvokeRestMethod.Uri)"
-            $local:metadata = Invoke-RestMethod @InvokeRestMethod
-            if($local:metadata) {
-                $global:metadatacache[$Authority] = $local:metadata
-                return $local:metadata
+            $metadata = Invoke-RestMethod @InvokeRestMethod
+            if($metadata) {
+                $global:metadatacache[$Authority] = $metadata
+                return $metadata
             } else {
                 Write-Error "cannot find metadata for $Authority"
             }
@@ -228,6 +233,9 @@ function Add-Metadata {
         [uri] 
         $UserInfoEndpoint
     )
+    begin {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
     process {
         switch ($PsCmdlet.ParameterSetName) {
             "Value" {
@@ -266,6 +274,7 @@ function Get-ScopeFromHttpError {
         $Extensions = [hashtable]::new()
     )
     begin {
+        Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         Add-Type -AssemblyName "System.Net.Http"
         $InvokeRestMethod = [hashtable]::new($Extensions)
         $InvokeRestMethod["UseBasicParsing"] = $true
@@ -277,18 +286,18 @@ function Get-ScopeFromHttpError {
                 try {
                     $InvokeRestMethod["Method"] = "Get"
                     $InvokeRestMethod["Uri"] = $Uri
-                    Invoke-RestMethod @InvokeRestMethod
+                    $null = Invoke-RestMethod @InvokeRestMethod
                 } catch {
                     if(-not $_.Exception.Response) { 
                         Write-Error -Message "no response from $Uri" -Category ConnectionError
                         return 
                     }
                     if($_.Exception.Response.StatusCode -ne "Unauthorized") {
-                        Write-Error -Message "unexpected status $($local:r.StatusCode) from $Uri" -Category ProtocolError
+                        Write-Error -Message "unexpected status $($_.Exception.Response.StatusCode) from $Uri" -Category ProtocolError
                         return
                     }
-                    $local:r = $_.Exception.Response.Headers.GetValues("WWW-Authenticate") | % { Get-ScopeFromHttpError -Value $_ }
-                    if($local:r) { return $local:r }
+                    $r = $_.Exception.Response.Headers.GetValues("WWW-Authenticate") | % { Get-ScopeFromHttpError -Value $_ }
+                    if($r) { return $r }
                     Write-Error -Message "no WWW-Authenticate header from $Uri" -Category ProtocolError
                 }
             }
