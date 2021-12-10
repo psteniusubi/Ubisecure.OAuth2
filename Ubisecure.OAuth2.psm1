@@ -348,6 +348,10 @@ function Get-AuthorizationCode {
         [switch] 
         $RandomPort = $true,
 
+        [parameter(Mandatory=$false,ParameterSetName="Browser")] 
+        [switch] 
+        $AnyHost = $false,
+
         [parameter(Mandatory=$false)] 
         [string] 
         $Scope = "openid",
@@ -392,7 +396,7 @@ function Get-AuthorizationCode {
         if($EmbeddedBrowser) {
             StartEmbeddedBrowserRequest -Authority $Authority -Client $Client -QueryString $local:query
         } else {
-            StartLoopbackRedirectionRequest -Authority $Authority -Client $Client -Browser $Browser -Private:$Private -RandomPort:$RandomPort -QueryString $local:query
+            StartLoopbackRedirectionRequest -Authority $Authority -Client $Client -Browser $Browser -Private:$Private -RandomPort:$RandomPort -AnyHost:$AnyHost -QueryString $local:query
         }
     }
 }

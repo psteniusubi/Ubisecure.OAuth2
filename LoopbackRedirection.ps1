@@ -59,6 +59,10 @@ function StartLoopbackRedirectionRequest {
         [switch] 
         $RandomPort = $true,
 
+        [parameter()] 
+        [switch] 
+        $AnyHost = $false,
+
         [Parameter()]
         [System.Collections.IDictionary] 
         $QueryString
@@ -68,7 +72,7 @@ function StartLoopbackRedirectionRequest {
             throw "redirect_uri is not defined"
         }
         $local:metadata = Get-Metadata -Authority $Authority -ErrorAction Stop
-        $local:listener = Start-HttpListener -Prefix (GetRootUrl $Client.RedirectUri) -RandomPort:$RandomPort
+        $local:listener = Start-HttpListener -Prefix (GetRootUrl $Client.RedirectUri) -RandomPort:$RandomPort -AnyHost:$AnyHost
         $local:redirect_uri = SetUrlPort -Url $Client.RedirectUri -Port $local:listener.Prefix.Port
         $local:id = [Guid]::NewGuid()
         $local:html = @"
