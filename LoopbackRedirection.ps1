@@ -85,6 +85,15 @@ function StartLoopbackRedirectionRequest {
     process {
         $local:query = $QueryString | 
             Add-QueryString "redirect_uri" $local:redirect_uri
+        if([string]::IsNullOrWhiteSpace($Client.Credential.Password)) {
+            $local:verifier = $null
+            $local:challenge = New-CodeChallenge ([ref]$verifier)
+            $local:query = $QueryString | 
+                Add-QueryString "code_challenge" $local:challenge |
+                Add-QueryString "code_challenge_method" "S256"
+        } else {
+            $local:verifier = $null
+        }
         $local:authorizationRequest = [UriBuilder]::new($local:metadata.authorization_endpoint)
         $local:authorizationRequest.Query = (ConvertTo-QueryString $local:query)
         Write-Verbose "StartLoopbackRedirectionRequest GET $local:authorizationRequest"
@@ -104,6 +113,7 @@ function StartLoopbackRedirectionRequest {
                 "PSTypeName" = "OAuth2.Code"
                 "Credential" = [pscredential]::new("code", (ConvertTo-SecureString -AsPlainText -Force -String $local:code)).GetNetworkCredential()
                 "RedirectUri" = $local:redirect_uri
+                "Verifier" = $local:verifier
             }                
         }
     }

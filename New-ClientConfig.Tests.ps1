@@ -55,3 +55,17 @@ Context "New-ClientConfig(ClientId)" {
         $config.Json | Should -BeNullOrEmpty
     }
 }
+
+Context "NetworkCredential" {
+    It "Test1" {
+        $t = [System.Net.NetworkCredential]::new("username", "password")
+        $t.UserName | Should -BeExactly "username"
+        $t.Password | Should -BeExactly "password"
+        $t = [System.Net.NetworkCredential]::new("username", "")
+        $t.UserName | Should -BeExactly "username"
+        $t.Password | Should -BeExactly ""
+        $t = [System.Net.NetworkCredential]::new("username", $null)
+        $t.UserName | Should -BeExactly "username"
+        $t.Password | Should -BeExactly "" # surprise!
+    }
+}

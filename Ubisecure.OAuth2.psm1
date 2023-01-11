@@ -457,12 +457,15 @@ function Get-AccessToken {
     process {
         $local:headers = @{"Accept"="application/json"}
         $local:tokenrequest = New-QueryString
-        if($HttpBasic) {
+        if($HttpBasic -and -not [string]::IsNullOrWhiteSpace($Client.Credential.Password)) {
             $local:headers += ($Client.Credential | ConvertTo-HttpBasic | ConvertTo-HttpAuthorization)
         } else {
             $local:tokenrequest = $local:tokenrequest |
-                Add-QueryString "client_id" $Client.Credential.UserName |
-                Add-QueryString "client_secret" $Client.Credential.Password
+                Add-QueryString "client_id" $Client.Credential.UserName
+            if(-not [string]::IsNullOrWhiteSpace($Client.Credential.Password)) {
+                $local:tokenrequest = $local:tokenrequest |
+                    Add-QueryString "client_secret" $Client.Credential.Password
+            }
         }
         switch ($PsCmdlet.ParameterSetName) {
             "Credential" {
@@ -478,8 +481,12 @@ function Get-AccessToken {
                 $local:tokenrequest = $local:tokenrequest | 
                     Add-QueryString "grant_type" "authorization_code" |
                     Add-QueryString "redirect_uri" $Code.RedirectUri |
-                    Add-QueryString "code" $Code.Credential.Password |
-                    ConvertTo-QueryString
+                    Add-QueryString "code" $Code.Credential.Password 
+                if($null -ne $Code.Verifier) {
+                    $local:tokenrequest = $local:tokenrequest | 
+                        Add-QueryString "code_verifier" $Code.Verifier 
+                }
+                $local:tokenrequest = $local:tokenrequest | ConvertTo-QueryString
             }
             "RefreshToken" {
                 $local:tokenrequest = $local:tokenrequest | 
@@ -588,12 +595,15 @@ function Get-TokenInfo {
     process {
         $local:headers = @{"Accept"="application/json"}
         $local:request = New-QueryString
-        if($HttpBasic) {
+        if($HttpBasic -and -not [string]::IsNullOrWhiteSpace($Client.Credential.Password)) {
             $local:headers += $Client.Credential | ConvertTo-HttpBasic | ConvertTo-HttpAuthorization
         } else {
             $local:request = $local:request | 
-                Add-QueryString "client_id" $Client.Credential.UserName |
-                Add-QueryString "client_secret" $Client.Credential.Password
+                Add-QueryString "client_id" $Client.Credential.UserName
+            if(-not [string]::IsNullOrWhiteSpace($Client.Credential.Password)) {
+                $local:request = $local:request | 
+                    Add-QueryString "client_secret" $Client.Credential.Password
+            }
         }
         $local:uri = $local:metadata.introspection_endpoint
         if(-not $local:uri) {
@@ -652,6 +662,39 @@ function ConvertTo-HttpAuthorization {
         % { 
             @{ "Authorization" = $_; }
         }
+    }
+}
+
+function ToBase64UrlSafe {
+    param(
+        [Parameter(Mandatory=$true,Position=0)]
+        [byte[]] 
+        $Bytes
+    )
+    process {
+        $t = [convert]::ToBase64String($Bytes)
+        $t.Replace("+", "-").Replace("/", "_").Replace("=", "")
+    }
+}
+
+function New-CodeChallenge {
+    [CmdletBinding()]
+    param(
+        [parameter(Mandatory=$true,Position=0)]
+        [ref]
+        $Verifier
+    )
+    begin {
+        $prng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    }
+    process {
+        $bytes = [byte[]]::new(32)
+        $null = $prng.GetNonZeroBytes($bytes)
+        $Verifier.Value = ToBase64UrlSafe $bytes
+        $bytes = [System.Text.Encoding]::ASCII.GetBytes($Verifier.Value)
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        $bytes = $sha256.ComputeHash($bytes)
+        return ToBase64UrlSafe $bytes
     }
 }
 
